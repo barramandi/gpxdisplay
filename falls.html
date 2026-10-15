@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cycling Rides Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        /* Custom styling for ride popups */
+        .leaflet-popup-content-wrapper {
+            background: #222;
+            color: #fff;
+            border-radius: 8px;
+        }
+        .leaflet-popup-tip {
+            background: #222;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet-GPX Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
+
+    <script>
+        // 1. Initialize the map centered roughly around the region (adjust coords/zoom if needed)
+        const map = L.map('map').setView([43.0, -79.0], 10);
+
+        // 2. Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Define your rides with their file paths, display names, and colors
+        const rides = [
+            { file: 'falls/Fort Erie.gpx', name: 'Fort Erie Ride', color: '#ffff00' },
+            { file: 'falls/hamburloop.gpx', name: 'Hamburloop', color: '#0000ff' },
+            { file: 'falls/niagara.gpx', name: 'Niagara Ride', color: '#000000' }
+        ];
+
+        let featureGroup = L.featureGroup().addTo(map);
+
+        // 3. Load each GPX file onto the map
+        rides.forEach(ride => {
+            new L.GPX(ride.file, {
+                async: true,
+                marker_options: {
+                    startIcon: null, // Hide default start/end pins to keep it clean
+                    endIcon: null,
+                    wptIcon: null
+                },
+                polyline_options: {
+                    color: ride.color,
+                    weight: 4,
+                    opacity: 0.8
+                }
+            }).on('loaded', function(e) {
+                // Zoom map to fit all tracks once loaded
+                map.fitBounds(e.target.getBounds());
+            }).on('click', function(e) {
+                // Action when an individual ride is clicked
+                let distanceKm = (e.target.get_distance() / 1000).toFixed(2);
+                let durationSec = e.target.get_duration();
+                
+                // Format duration nicely if available
+                let hours = Math.floor(durationSec / 3600);
+                let minutes = Math.floor((durationSec % 3600) / 60);
+                let timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} mins`;
+
+                // Bind a popup with details on click
+                let popupContent = `
+                    <div style="font-size: 14px;">
+                        <h3 style="margin: 0 0 5px 0; color: ${ride.color};">${ride.name}</h3>
+                        <p style="margin: 3px 0;"><b>Distance:</b> ${distanceKm} km</p>
+                        <p style="margin: 3px 0;"><b>Moving Time:</b> ${timeStr}</p>
+                    </div>
+                `;
+                L.popup()
+                 .setLatLng(e.latlng)
+                 .setContent(popupContent)
+                 .openOn(map);
+            }).addTo(featureGroup);
+        });
+    </script>
+</body>
+</html>
