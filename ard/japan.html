@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cycling Rides Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        /* Custom styling for ride popups */
+        .leaflet-popup-content-wrapper {
+            background: #222;
+            color: #fff;
+            border-radius: 8px;
+        }
+        .leaflet-popup-tip {
+            background: #222;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet-GPX Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
+
+    <script>
+        // 1. Initialize the map centered roughly around Japan (adjust coords/zoom if needed)
+        const map = L.map('map').setView([36.2048, 138.2529], 6);
+
+        // 2. Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            referrerPolicy: 'strict-origin-when-cross-origin',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Folder where your new GPX files are stored (change 'gpx' if your folder name is different)
+        const folder = 'gpx/';
+
+        // List of all your tour GPX files with friendly display names
+        const rawRides = [
+            { file: 'D1_continues_to_Teshio.gpx', name: 'Day 1: Continues to Teshio' },
+            { file: 'D1_from_Cape_Soya.gpx', name: 'Day 1: From Cape Soya' },
+            { file: 'Day_2_continues_to_Haboro.gpx', name: 'Day 2: Continues to Haboro' },
+            { file: 'Day_2_final_part_arriving_Haboro.gpx', name: 'Day 2: Arriving Haboro' },
+            { file: 'Day_2_to_Haboro.gpx', name: 'Day 2: To Haboro' },
+            { file: 'Day_3_to_Rumoi.gpx', name: 'Day 3: To Rumoi' },
+            { file: 'Day_4_to_Bibai.gpx', name: 'Day 4: To Bibai' },
+            { file: 'Day_5_to_Sapporo.gpx', name: 'Day 5: To Sapporo' },
+            { file: 'Day_6_to_Kimobetsu.gpx', name: 'Day 6: To Kimobetsu' },
+            { file: 'Day_7_part_2_to_Oshamembe.gpx', name: 'Day 7 (Part 2): To Oshamembe' },
+            { file: 'Day_7_to_Oshamembe_part_1_stop_due_rain.gpx', name: 'Day 7 (Part 1): To Oshamembe' },
+            { file: 'Day_8_to_Hakodate_part_1.gpx', name: 'Day 8 (Part 1): To Hakodate' },
+            { file: 'Day_8_to_Hakodate_Part_2.gpx', name: 'Day 8 (Part 2): To Hakodate' },
+            { file: 'Day_8_to_Hakodate_Part_3.gpx', name: 'Day 8 (Part 3): To Hakodate' },
+            { file: 'Day_8_to_Hakodate_Part_4_4.gpx', name: 'Day 8 (Part 4): To Hakodate' },
+            { file: 'Day_9_to_Lamp_No_Yado_Aoni_Onsen.gpx', name: 'Day 9: To Aoni Onsen' },
+            { file: 'Day_10_to_Odate_Part_1.gpx', name: 'Day 10 (Part 1): To Odate' },
+            { file: 'Day_10_to_Odate_Part_2_2.gpx', name: 'Day 10 (Part 2): To Odate' },
+            { file: 'Day_11_to_N_Akita.gpx', name: 'Day 11: To North Akita' },
+            { file: 'Day_12_to_Sakata.gpx', name: 'Day 12: To Sakata' },
+            { file: 'Day_13_to_Murakami_Part_1.gpx', name: 'Day 13 (Part 1): To Murakami' },
+            { file: 'Day_13_to_Murakami_Part_2_2.gpx', name: 'Day 13 (Part 2): To Murakami' },
+            { file: 'Day_14_to_Nagaoka.gpx', name: 'Day 14: To Nagaoka' },
+            { file: 'Day_15_to_Urasa.gpx', name: 'Day 15: To Urasa' },
+            { file: 'Day_16_to_Yuzawa.gpx', name: 'Day 16: To Yuzawa' },
+            { file: 'Day_17_to_Minakami.gpx', name: 'Day 17: To Minakami' },
+            { file: 'Day_20_to_Tsumagoi.gpx', name: 'Day 20: To Tsumagoi' },
+            { file: 'Day_21_to_Suwa.gpx', name: 'Day 21: To Suwa' },
+            { file: 'Day_22_to_Mizunami_Part_1.gpx', name: 'Day 22 (Part 1): To Mizunami' },
+            { file: 'Day_22_to_Mizunami_Part_2_of_2.gpx', name: 'Day 22 (Part 2): To Mizunami' },
+            { file: 'Day_23_to_Hikone.gpx', name: 'Day 23: To Hikone' },
+            { file: 'Day_24_to_Amagasaki.gpx', name: 'Day 24: To Amagasaki' },
+            { file: 'Day_25_to_Ako.gpx', name: 'Day 25: To Ako' },
+            { file: 'Day_26_to_Fukuyama.gpx', name: 'Day 26: To Fukuyama' },
+            { file: 'Day_27_to_Matsuyama_Part_1.gpx', name: 'Day 27 (Part 1): To Matsuyama' },
+            { file: 'Day_27_to_Matsuyama_Part_2_Shimanamikaido.gpx', name: 'Day 27 (Part 2): Shimanami Kaido' },
+            { file: 'Day_27_to_Matsuyama_Part_3_3.gpx', name: 'Day 27 (Part 3): To Matsuyama' },
+            { file: 'Day_28_P_Line_test_ride_at_night.gpx', name: 'Day 28: Night Test Ride' },
+            { file: 'Day_29_to_Misaki_Ferry_Port.gpx', name: 'Day 29: To Misaki Ferry Port' },
+            { file: 'Day_30_to_Nabeoka.gpx', name: 'Day 30: To Nabeoka' },
+            { file: 'Day_31_to_Miyasaki.gpx', name: 'Day 31: To Miyazaki' },
+            { file: 'Day_32_to_Minamiosumi.gpx', name: 'Day 32: To Minamiosumi' },
+            { file: 'Day_33_33_to_Cape_Sata.gpx', name: 'Day 33: To Cape Sata' }
+        ];
+
+        // Automatically assign cycling-friendly colors cycling through an array
+        const palette = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080'];
+        
+        const rides = rawRides.map((ride, index) => ({
+            file: folder + ride.file,
+            name: ride.name,
+            color: palette[index % palette.length]
+        }));
+
+        let featureGroup = L.featureGroup().addTo(map);
+
+        // 3. Load each GPX file onto the map
+        rides.forEach(ride => {
+            new L.GPX(ride.file, {
+                async: true,
+                marker_options: {
+                    startIcon: null,
+                    endIcon: null,
+                    wptIcon: null
+                },
+                polyline_options: {
+                    color: ride.color,
+                    weight: 4,
+                    opacity: 0.8
+                }
+            }).on('loaded', function(e) {
+                // Zoom map to fit all tracks once loaded
+                map.fitBounds(e.target.getBounds());
+            }).on('click', function(e) {
+                let distanceKm = (e.target.get_distance() / 1000).toFixed(2);
+                let durationSec = e.target.get_duration();
+                
+                let hours = Math.floor(durationSec / 3600);
+                let minutes = Math.floor((durationSec % 3600) / 60);
+                let timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} mins`;
+
+                let popupContent = `
+                    <div style="font-size: 14px;">
+                        <h3 style="margin: 0 0 5px 0; color: ${ride.color};">${ride.name}</h3>
+                        <p style="margin: 3px 0;"><b>Distance:</b> ${distanceKm} km</p>
+                        <p style="margin: 3px 0;"><b>Moving Time:</b> ${timeStr}</p>
+                    </div>
+                `;
+                L.popup()
+                 .setLatLng(e.latlng)
+                 .setContent(popupContent)
+                 .openOn(map);
+            }).addTo(featureGroup);
+        });
+    </script>
+</body>
+</html>
